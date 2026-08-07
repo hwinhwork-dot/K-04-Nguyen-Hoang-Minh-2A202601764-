@@ -145,11 +145,18 @@ env.bak/
 venv.bak/
 
 # Local grade / run outputs
+# grade_report.json là artifact tự kiểm ở máy, sinh lại được -> không commit.
 outputs/grade_report.json
-outputs/results.json
-outputs/attack_results.json
-outputs/audit_log.json
-outputs/metrics.json
+
+# BỐN FILE DƯỚI ĐÂY LÀ DELIVERABLE BẮT BUỘC — cố ý KHÔNG ignore.
+# SUBMISSION.md liệt kê chúng trong "Cấu trúc thư mục bắt buộc" và "Tên file
+# bắt buộc", còn scripts/grade.py kiểm sự tồn tại của chúng ngay trong repo
+# nộp (required_files()). Nếu để starter ignore như cũ thì bài push lên GitHub
+# sẽ thiếu toàn bộ bằng chứng và grader báo technical_failure.
+#   outputs/results.json
+#   outputs/attack_results.json
+#   outputs/audit_log.json
+#   outputs/metrics.json
 
 # Spyder project settings
 .spyderproject

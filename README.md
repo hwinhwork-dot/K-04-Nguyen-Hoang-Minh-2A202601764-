@@ -1,5 +1,63 @@
 # Day 11 — Controlled Agent Security (2026)
 
+## Bài nộp
+
+| | |
+|---|---|
+| **Họ và tên** | Nguyễn Hoàng Minh |
+| **MSSV** | 2A202601764 |
+| **Lớp** | K-04 |
+| **Báo cáo** | [`report/2A202601764_report.md`](report/2A202601764_report.md) |
+| **Model chạy thử nghiệm** | `openai/gpt-4o-mini` qua `google-adk` + LiteLLM |
+
+### Cách chạy bài này
+
+```bash
+# 1) Môi trường (macOS/Linux; Windows xem mục "Cài đặt môi trường" bên dưới)
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+# 2) API key — sao chép .env.example thành .env rồi điền key
+cp .env.example .env
+```
+
+Trong `.env` cần: `LLM_PROVIDER` (`openai` hoặc `gemini`), key tương ứng
+(`OPENAI_API_KEY` hoặc `GOOGLE_API_KEY`), và `STUDENT_ID=2A202601764`.
+
+```bash
+# 3) Sinh toàn bộ artifact nộp bài
+cd src
+python main.py --part 5      # -> outputs/results.json, audit_log.json, metrics.json
+python main.py --part 1      # -> outputs/attack_results.json
+python main.py --part 3      # so sánh before/after guardrail
+python main.py --part 4      # HITL router + decision points (không gọi API)
+python main.py --part 2      # test guardrail + NeMo (không bắt buộc)
+
+# 4) Tự kiểm trước khi nộp
+cd ..
+pytest tests/smoke -q
+pytest tests/public -q
+python scripts/grade.py --submission-dir . --out outputs/grade_report.json
+```
+
+### Bản đồ code bài làm
+
+| Hạng mục | File |
+|---|---|
+| Input guardrails (chuẩn hoá Unicode, injection, topic, provenance) | `src/guardrails/input_guardrails.py` |
+| Output guardrails (redact PII/secret, LLM-as-Judge) | `src/guardrails/output_guardrails.py` |
+| NeMo Colang rules | `src/guardrails/nemo_guardrails.py` |
+| Egress policy + lắp ráp pipeline + bộ test 1–4 | `src/assignment/pipeline.py` |
+| Rate limiter (sliding window) | `src/assignment/rate_limiter.py` |
+| Audit log (correlation ID) | `src/assignment/audit_log.py` |
+| Monitoring + alert + incident replay | `src/assignment/monitoring.py` |
+| HITL router + vòng đời review | `src/hitl/hitl.py` |
+| Corpus tấn công theo taxonomy | `src/attacks/attacks.py` |
+| So sánh before/after + bộ test bảo mật | `src/testing/testing.py` |
+
+---
+
 Làm sao để ứng dụng agent an toàn hơn?
 
 **Hình thức:** bài tập **cá nhân** (1 người / 1 MSSV).
@@ -189,3 +247,33 @@ Nộp theo [`SUBMISSION.md`](SUBMISSION.md).
 - [NeMo Guardrails](https://github.com/NVIDIA/NeMo-Guardrails)
 - [Google ADK](https://google.github.io/adk-docs/)
 - [AI Safety Fundamentals](https://aisafetyfundamentals.com/)
+
+---
+
+## Chọn nhà cung cấp model (Gemini hoặc OpenAI)
+
+Pipeline không gắn cứng model. `src/core/config.py` có `get_model()`, đọc biến
+`LLM_PROVIDER` trong `.env`:
+
+| `LLM_PROVIDER` | Key cần có | Model mặc định |
+|---|---|---|
+| `gemini` (mặc định) | `GOOGLE_API_KEY` | `gemini-3.1-flash-lite` |
+| `openai` | `OPENAI_API_KEY` | `gpt-4o-mini` (đổi qua `OPENAI_MODEL`) |
+
+Đổi một dòng trong `.env` là unsafe agent, guards agent, hai LLM judge và bước
+sinh attack bằng AI đều chuyển theo. Guardrail, plugin và policy giữ nguyên —
+chúng không phụ thuộc nhà cung cấp.
+
+Lý do có tuỳ chọn này: gói free của Gemini giới hạn theo request/phút, và bộ
+test chạy hơn 30 lượt gọi nên rất dễ chạm trần giữa chừng.
+
+### Thư viện ngoài đã dùng (ngoài starter)
+
+| Thư viện | Dùng để làm gì | Nguồn |
+|---|---|---|
+| `litellm` | Cho `google-adk` gọi được model OpenAI qua `google.adk.models.lite_llm.LiteLlm` | https://github.com/BerriAI/litellm |
+| `openai` | SDK nền mà litellm gọi tới | https://github.com/openai/openai-python |
+
+Phần còn lại chỉ dùng thư viện chuẩn của Python (`re`, `unicodedata`,
+`urllib.parse`, `secrets`, `math`, `asyncio`) và các gói đã có sẵn trong
+`requirements.txt` của starter.

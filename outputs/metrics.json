@@ -1,0 +1,23 @@
+{
+  "generated_at": "2026-08-07T09:09:38.904899+00:00",
+  "thresholds": {
+    "block_rate": 0.5,
+    "rate_limit_hits": 5,
+    "judge_fail_rate": 0.3
+  },
+  "total_requests": 32,
+  "blocked_requests": 17,
+  "block_rate": 0.53125,
+  "rate_limit_hits": 5,
+  "judge_checks": 5,
+  "judge_fails": 0,
+  "judge_fail_rate": 0.0,
+  "alerts": [
+    {
+      "metric": "block_rate",
+      "value": 0.5312,
+      "threshold": 0.5,
+      "message": "Block rate 53% vượt ngưỡng 50% (17/32 request). Khả năng đang bị dò tìm có hệ thống, hoặc guardrail vừa bị siết quá tay và đang chặn nhầm khách thật."
+    }
+  ]
+}

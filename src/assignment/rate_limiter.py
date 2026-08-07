@@ -1,5 +1,5 @@
 """
-Assignment 11 — Rate Limiter starter (TODO).
+Assignment 11 — Rate Limiter (đã hoàn thành).
 
 Sliding-window, per-user rate limiting. Blocks abuse that other
 guardrail layers do not address (flooding / cost attacks).
@@ -31,19 +31,48 @@ class RateLimitPlugin(base_plugin.BasePlugin):
         )
 
     async def on_user_message_callback(self, *, invocation_context, user_message):
-        """Return Content to block, or None to allow."""
+        """Return Content to block, or None to allow.
+
+        Sliding window thay vì fixed window: fixed window cho phép dồn 2×limit
+        quanh mốc reset (10 request cuối phút này + 10 request đầu phút sau).
+        Sliding window đo đúng "N request gần nhất trong W giây" nên không có
+        khe hở đó.
+
+        Đây là lớp ĐẦU TIÊN vì nó rẻ nhất — chặn được flooding trước khi tốn
+        bất kỳ regex hay token LLM nào. Nó cũng là lớp duy nhất chặn được kiểu
+        tấn công mà từng request đều hợp lệ, chỉ có số lượng là bất thường
+        (dò brute-force, đốt quota).
+        """
         self.total_count += 1
         user_id = getattr(invocation_context, "user_id", None) or "anonymous"
         now = time.time()
         window = self.user_windows[user_id]
 
-        # TODO: Implement sliding window:
-        # 1. Pop timestamps older than (now - window_seconds) from the left
-        # 2. If len(window) >= max_requests:
-        #       wait = window_seconds - (now - window[0])
-        #       self.blocked_count += 1
-        #       return self._block_response(
-        #           f"Rate limit exceeded. Try again in {wait:.0f}s."
-        #       )
-        # 3. Else: append now, return None
-        raise NotImplementedError("Implement RateLimitPlugin.on_user_message_callback")
+        # 1) Bỏ các mốc đã trôi ra khỏi cửa sổ. deque cho phép popleft O(1),
+        #    nên chi phí không phụ thuộc lịch sử dài bao nhiêu.
+        cutoff = now - self.window_seconds
+        while window and window[0] <= cutoff:
+            window.popleft()
+
+        # 2) Đủ hạn mức -> chặn, và nói rõ còn bao lâu để client lùi đúng nhịp
+        #    thay vì thử lại liên tục.
+        if len(window) >= self.max_requests:
+            wait = self.window_seconds - (now - window[0])
+            self.blocked_count += 1
+            return self._block_response(
+                f"Rate limit exceeded. Try again in {wait:.0f}s."
+            )
+
+        # 3) Còn chỗ -> ghi nhận và cho qua.
+        window.append(now)
+        return None
+
+    def snapshot(self) -> dict:
+        """Số liệu cho monitoring / results.json."""
+        return {
+            "max_requests": self.max_requests,
+            "window_seconds": self.window_seconds,
+            "sent": self.total_count,
+            "passed": self.total_count - self.blocked_count,
+            "blocked": self.blocked_count,
+        }

@@ -39,7 +39,13 @@ async def run_comparison():
     print("PHASE 1: Unprotected Agent")
     print("=" * 60)
     unsafe_agent, unsafe_runner = create_unsafe_agent()
-    unprotected_results = await run_attacks(unsafe_agent, unsafe_runner)
+    # Truyền target_name="unsafe" chứ không để mặc định "agent": đây đúng là
+    # unsafe agent, và nếu bỏ trống thì run_attacks ghi ra một file tên thứ ba
+    # (agent_attack_result.json) trùng nội dung với unsafe_attack_result.json
+    # của part 1 — thừa artifact, dễ gây nhầm khi người chấm đọc outputs/.
+    unprotected_results = await run_attacks(
+        unsafe_agent, unsafe_runner, target_name="unsafe"
+    )
 
     # --- Protected agent ---
     # Cùng bộ prompt tấn công, khác đúng một thứ: có guardrail plugin gắn vào
